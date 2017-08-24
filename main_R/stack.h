@@ -1,3 +1,6 @@
+
+
+
 /* スタックのデータ構造と関数プロトタイプ */
 #ifndef _stack
 #define _stack

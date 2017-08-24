@@ -7,8 +7,9 @@
 #include "balancer.h"
 
 #define TAIL_ANGLE_MINIMUM  360  /*尻尾を一番上にする特殊数値*/
-#define TAIL_ANGLE_STAND_UP  92  /* 完全停止時の角度[度] */
+#define TAIL_ANGLE_STAND_UP  96 /* 完全停止時の角度[度] */
 #define TAIL_ANGLE_DRIVE      3  /* バランス走行時の角度[度] */
+#define TAIL_ANGLE_INIT    -180  /*	初期化時の角度[度] */
 #define P_GAIN             2.5F  /* 完全停止用モータ制御比例係数 */
 #define PWM_ABS_MAX          60  /* 完全停止用モータ制御PWM絶対最大値 */
 

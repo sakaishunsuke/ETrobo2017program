@@ -6,7 +6,6 @@
 
 #define CALIB_FONT_HEIGHT (8/*TODO: magic number*/)
 
-
 typedef struct {
 	int white;
 	int black;
@@ -47,20 +46,24 @@ void Devices_calibrate() {
 	ev3_motor_config(left_motor, LARGE_MOTOR);
 	ev3_motor_config(right_motor, LARGE_MOTOR);
 	ev3_motor_config(tail_motor, LARGE_MOTOR);
-	/* 尻尾センサリセット */
-	ev3_motor_reset_counts(tail_motor);
-
 	/* ジャイロセンサーリセット */
 	ev3_gyro_sensor_reset(gyro_sensor);
 	balance_init(); /* 倒立振子API初期化 */
 
-
-	ev3_lcd_draw_string("EV3way-ET prototype_c", 0, CALIB_FONT_HEIGHT * 1);
+	do{
+		ev3_motor_reset_counts(tail_motor);//尻尾の角度センサー値をリセットする
+		Devices_controlDevice(MOTOR_TAIL_, TAIL_ANGLE_INIT);//尻尾を上にあげる
+		tslp_tsk(50);
+	} while (Devices_getDeviceValue(MOTOR_TAIL_) != 0);//体につく(変化がなくなる)まで
+	/* 尻尾センサリセット */
+	ev3_motor_reset_counts(tail_motor);
+	
+	ev3_lcd_draw_string("EV3way-ET main_R", 0, CALIB_FONT_HEIGHT * 1);
 	ev3_lcd_draw_string("         GYRO Calibrate", 0, CALIB_FONT_HEIGHT * 2);
 	ev3_lcd_draw_string("         WHITE Calibrate", 0, CALIB_FONT_HEIGHT * 3);
 	ev3_lcd_draw_string("         BLACK Calibrate", 0, CALIB_FONT_HEIGHT * 4);
 	ev3_lcd_draw_string("         GRAY Calibrate", 0, CALIB_FONT_HEIGHT * 5);
-	tslp_tsk(1000);
+	tslp_tsk(500);
 
 	/*
 	char mozi[50] = {};
@@ -94,48 +97,43 @@ void Devices_calibrate() {
 		if (Devices_getDeviceValue(SENSOR_TOUCH_) == 1){
 			break; // タッチセンサが押された
 		}
-		//tslp_tsk(40);
 	}
 	calibrateValue.gyro = Devices_getDeviceValue(SENSOR_GYRO_);
 	ev3_lcd_draw_string("Complete GYRO Calibrate", 0, CALIB_FONT_HEIGHT * 2);
-	tslp_tsk(1000); // 1s停止
+	//while (Devices_getDeviceValue(SENSOR_TOUCH_) == 1);//ボタンから離れるまで停止
 
-/*
 	// 白色
 	while (1) {
 		Devices_controlDevice(MOTOR_TAIL_, TAIL_ANGLE_STAND_UP);
-		if (Devices_getDeviceValue(SENSOR_TOUCH_) == 0) {
+		if (Devices_getDeviceValue(SENSOR_TOUCH_) == 1) {
 			break;
 		}
-		//tslp_tsk(40);
 	}
 	calibrateValue.white = Devices_getDeviceValue(SENSOR_COLOR_);
 	ev3_lcd_draw_string("Complete WHITE Calibrate", 0, CALIB_FONT_HEIGHT * 3);
-	tslp_tsk(1000);
+	//while (Devices_getDeviceValue(SENSOR_TOUCH_) == 1);//ボタンから離れるまで停止
 
 	// 黒色
 	while (1) {
 		Devices_controlDevice(MOTOR_TAIL_, TAIL_ANGLE_STAND_UP);
-		if (Devices_getDeviceValue(SENSOR_TOUCH_) == 0) {
+		if (Devices_getDeviceValue(SENSOR_TOUCH_) == 1) {
 			break;
 		}
-		//tslp_tsk(40);
 	}
 	calibrateValue.black = Devices_getDeviceValue(SENSOR_COLOR_);
 	ev3_lcd_draw_string("Complete BLACK Calibrate", 0, CALIB_FONT_HEIGHT * 4);
-	tslp_tsk(1000);
+	//while (Devices_getDeviceValue(SENSOR_TOUCH_) == 1);//ボタンから離れるまで停止
+
 	// 灰色
 	while (1) {
 		Devices_controlDevice(MOTOR_TAIL_, TAIL_ANGLE_STAND_UP);
-		if (Devices_getDeviceValue(SENSOR_TOUCH_) == 0) {
+		if (Devices_getDeviceValue(SENSOR_TOUCH_) == 1) {
 			break;
 		}
-		//tslp_tsk(40);
 	}
-*/
 	calibrateValue.gray = Devices_getDeviceValue(SENSOR_COLOR_);
 	ev3_lcd_draw_string("Complete GRAY Calibrate", 0, CALIB_FONT_HEIGHT * 5);
-	tslp_tsk(1000);
+	//while (Devices_getDeviceValue(SENSOR_TOUCH_) == 1);//ボタンから離れるまで停止
 
 	char mozi[50] = {};
 	sprintf(mozi, "         WHITE = %4d", Devices_getCalibrateValue(WHITE_CALIBRATE));
@@ -253,12 +251,6 @@ int  Devices_getDeviceValue(int deviceNo) {
 			return ev3_ultrasonic_sensor_get_distance(sonar_sensor);
 
 		case SENSOR_TOUCH_:
-			/*
-			if (ev3_button_is_pressed(UP_BUTTON)) {
-				while (ev3_button_is_pressed(UP_BUTTON));
-				return  1;
-			}
-			*/
 			if (ev3_touch_sensor_is_pressed(touch_sensor)) {
 				while (ev3_touch_sensor_is_pressed(touch_sensor));
 				return  1;

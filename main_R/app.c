@@ -9,6 +9,8 @@
  **/
 
 #include "ev3api.h"
+#include <syssvc/serial.h>
+#include <string.h>
 #include "app.h"
 #include "balancer.h"
 
@@ -38,6 +40,49 @@
 
 static int      bt_cmd = 0;     /* Bluetoothコマンド 1:リモートスタート */
 static FILE     *bt = NULL;     /* Bluetoothファイルハンドル */
+
+//暫定でここに書いてる
+#define SCENARIO_SIZE 10 /*シナリオの数*/
+#define SCENARIO_KIND_SIZE 5 /*シナリオの中の種類　PID、ターン後の時間、maxスピード*/
+/*--- シナリオのデータ類を実現する構造体 ---*/
+typedef struct {
+	int  max;       /* シナリオの数 */
+	int  Number;       /* 現在のシナリオ番号 */
+	int  scenario[SCENARIO_SIZE][SCENARIO_KIND_SIZE];      /* シナリオ本体() */
+} SCENARIO;
+SCENARIO scenario;	/* 構造体の実体化 */
+void scenarioInit(SCENARIO *s) {	/* シナリオの初期化関数 */
+	s->max = 1;
+	s->Number = 0;
+	s->scenario[0][0] = 1;
+	s->scenario[0][1] = 0;
+	s->scenario[0][2] = 0;
+	s->scenario[0][3] = 500;
+	s->scenario[0][4] = 50;
+}
+
+/*--- BTのデータ類を実現する構造体 ---*/
+typedef struct {
+	bool_t	send_flag;			/* BTでデータを遅らせるflag*/
+	int		left_motor_value;	/* 左モータの回転量 */
+	int		right_motor_value;	/* 右モータの回転量 */
+	int		running_state;		/* 走行の状態、直進0、右旋回1、左旋回-1 */
+	bool_t	start_flag;			/* BTからのスタートのflag */
+	bool_t	stop_flag;			/* BTからのストップのflag */
+} BT_DATA;
+void btDataInit(BT_DATA *bt_data) {
+	bt_data->send_flag = false;
+	bt_data->left_motor_value = 0;
+	bt_data->right_motor_value = 0;
+	bt_data->running_state = 0;
+	bt_data->start_flag = false;
+	bt_data->stop_flag = false;
+}
+BT_DATA bt_data;	/* 構造体の実体化 */
+
+/*BTの設定のマクロ(暫定)*/
+#define BTLEN 10 /*BTで受け取る文字の長さ*/
+
 
 /* 下記のマクロは個体/環境に合わせて変更する必要があります */
 
@@ -93,8 +138,10 @@ void init() {
 	/* LCD画面表示 */
 	ev3_lcd_fill_rect(0, 0, EV3_LCD_WIDTH, EV3_LCD_HEIGHT, EV3_LCD_WHITE);
 
-
-
+	/*シナリオの初期化*/
+	scenarioInit(&scenario);
+	/* BT_DATAの初期化 */
+	btDataInit(&bt_data);
 	
 	/* 
 	ev3_sensor_config(sonar_sensor, ULTRASONIC_SENSOR);
@@ -135,25 +182,19 @@ void init() {
 /* メインタスク */
 void main_task(intptr_t unused)
 {
-    
-	/* 初期化 */
+    /* 初期化 */
 	init();
-
-    /* Open Bluetooth file */
+	/* Open Bluetooth file */
     bt = ev3_serial_open_file(EV3_SERIAL_BT);
     //assert(bt != NULL);
-
-    /* Bluetooth通信タスクの起動 */
+	/* Bluetooth通信タスクの起動 */
     act_tsk(BT_TASK);
 
     ev3_led_set_color(LED_ORANGE); /* 初期化完了通知 */
 
-
-
-    /* スタート待機 */
     while(1)
     {
-		
+		/* スタート待機 */
 		Devices_controlDevice(MOTOR_TAIL_, TAIL_ANGLE_STAND_UP); /* 完全停止用角度に制御 */
 
         if (bt_cmd == 1){
@@ -164,7 +205,7 @@ void main_task(intptr_t unused)
             break; /* タッチセンサが押された */
         }
 
-        tslp_tsk(10); /* 10msecウェイト */
+        tslp_tsk(1); /* 10msecウェイト */
     }
 
 
@@ -238,23 +279,42 @@ void bt_task(intptr_t unused)
 {
     while(1)
     {
+		/*PCに送信*/
+		//fprintf(bt, "N_%1d", scenario.Number); /* 現在のシナリオ番号を転送 */
+		/*
+		char buf[BTLEN];
+		//serial_rea_dat(EV3_SERIAL_BT, buf, BTLEN);//BTLEN分の文字を取得
+
+		if (strstr(buf,"start") != NULL) {
+			bt_cmd = 1;
+		}
+		else if (strstr(buf, "stop") != NULL) {
+			bt_cmd = 0;
+		}
+		else if (strstr(buf,"M_") != NULL) {
+			char *tok = strtok(buf,"M_");
+			if (tok != NULL) {
+				scenario.Number = tok[0] - '0';//数値を取得
+				scenario.Number++;
+			}
+		}
+		*/
 		if (bt_cmd != 1) {
-			uint8_t c = fgetc(bt); /* 受信 */
+			uint8_t c = fgetc(bt); // 受信 
 			switch (c)
 			{
 			case '1':
-				bt_cmd = 1;
+				bt_cmd = 0;
 				break;
 			default:
 				break;
 			}
-			fputc(c, bt); /* エコーバック */
+			fputc(c, bt); // エコーバック 
 		}
 		
 		//結果をPCに送信
 		/*
 		fprintf(bt, "S%03d,%03d,%03d,null,",送る変数１, 送る変数２, 送る変数３);
 		*/
-		
-    }
+	}
 }

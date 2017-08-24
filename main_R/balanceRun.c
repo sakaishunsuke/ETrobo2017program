@@ -4,7 +4,7 @@ int threshiold;
 int gyroOffset;
 
 int BalanceRun_run() {
-	signed char forward;      /* 前後進命令 */
+	static signed char forward = -5;      /* 前後進命令 */
 	signed char turn = 0;     /* 旋回命令 */
 
 	signed char pwm_L, pwm_R; /* 左右モータPWM出力 */
@@ -17,7 +17,10 @@ int BalanceRun_run() {
 	Devices_controlDevice(MOTOR_TAIL_, TAIL_ANGLE_DRIVE); /* バランス走行用角度に制御 */
 
 	//forward = 20; /* 前進命令 */
-	forward = 0;  /* 停止命令 */
+	if (forward > 50)
+		forward = 50;  /* 停止命令 */
+	else
+		forward += 3;
 
 	/* 倒立振子制御API に渡すパラメータを取得する */
 	motor_ang_l = Devices_getDeviceValue(MOTOR_LEFT_);

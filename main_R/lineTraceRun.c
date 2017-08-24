@@ -23,9 +23,9 @@ int LineTraceRun_run() {
 
 	/* ‘Oi–½—ß */
 	//forward = 100 - (turn >= 0 ? turn : -turn);
-	if (forward < 75)
+	if (forward < 80)
 		forward++;
-		forward=0;
+	//forward=0;
 	
 	//if (Devices_getDeviceValue(SENSOR_COLOR_) >= threshiold) {
 		//turn = -15; /* ¶ù‰ñ–½—ß */
